@@ -28,12 +28,13 @@ class LLMClient:
         """
 
         settings = get_settings()
-        if settings.openai_api_key:
+        api_key = _configured_api_key(settings.openai_api_key)
+        if api_key:
             response = self._complete_openai(
                 system_prompt=system_prompt,
                 user_prompt=user_prompt,
                 model=settings.openai_model,
-                api_key=settings.openai_api_key,
+                api_key=api_key,
                 timeout_seconds=settings.timeout_seconds,
             )
             if response is not None:
@@ -54,7 +55,7 @@ class LLMClient:
         except ImportError:
             return None
 
-        client = OpenAI(api_key=api_key, timeout=timeout_seconds)
+        client = OpenAI(api_key=api_key, timeout=timeout_seconds, max_retries=0)
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
@@ -100,3 +101,13 @@ class LLMClient:
             output_tokens=len(content.split()),
             cost_usd=None,
         )
+
+
+def _configured_api_key(value: str | None) -> str | None:
+    if value is None:
+        return None
+
+    stripped = value.strip()
+    if not stripped or stripped.lower() in {"offline", "none", "null", "dummy", "test"}:
+        return None
+    return stripped
